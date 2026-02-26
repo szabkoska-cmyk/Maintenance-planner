@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AeroTrack Pro</title>
+    <style>
+        :root { --ion-blue: #007aff; --ion-red: #ff3b30; --ion-green: #34c759; --bg: #f2f2f7; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-top: 50px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn-add { background: var(--ion-blue); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 600; }
+        .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .tail-num { font-size: 20px; font-weight: 800; }
+        .status-tag { float: right; font-size: 12px; padding: 4px 8px; border-radius: 5px; font-weight: bold; }
+        .status-ok { background: #e2f9e1; color: var(--ion-green); }
+        .status-warn { background: #ffe5e5; color: var(--ion-red); }
+        .report-box { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+        .report-item { background: #f9f9fb; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; border-left: 3px solid var(--ion-red); }
+        .report-img { width: 100%; border-radius: 8px; margin-top: 5px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; backdrop-filter: blur(5px); }
+        .modal-content { background: white; width: 90%; margin: 15% auto; padding: 20px; border-radius: 20px; box-sizing: border-box; }
+        textarea, input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .action-btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Hangar</h1>
+        <button class="btn-add" onclick="showModal('planeModal', true)">+ Aircraft</button>
+    </div>
+
+    <div id="fleetDisplay"></div>
+
+    <div id="planeModal" class="modal">
+        <div class="modal-content">
+            <h2>Add Aircraft</h2>
+            <input type="text" id="tailInput" placeholder="Tail Number">
+            <input type="text" id="typeInput" placeholder="Model">
+            <input type="number" id="tachInput" placeholder="Current Tach">
+            <button class="action-btn" style="background:var(--ion-blue); color:white;" onclick="saveAircraft()">Add to Fleet</button>
+            <button class="action-btn" style="background:none; color:grey;" onclick="showModal('planeModal', false)">Cancel</button>
+        </div>
+    </div>
+
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <h2 id="targetTail">New Report</h2>
+            <textarea id="issueDesc" rows="3" placeholder="Describe the damage..."></textarea>
+            <input type="file" id="photoInput" accept="image/*" capture="camera">
+            <button id="saveReportBtn" class="action-btn" style="background:var(--ion-red); color:white;" onclick="processAndSaveReport()">Log & Ground</button>
+            <button class="action-btn" style="background:none; color:grey;" onclick="showModal('reportModal', false)">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        let myFleet = JSON.parse(localStorage.getItem('aeroFleetV4')) || [];
+        let activePlaneId = null;
+
+        function showModal(id, show) {
+            document.getElementById(id).style.display = show ? 'block' : 'none';
+        }
+
+        function saveAircraft() {
+            const tail = document.getElementById('tailInput').value.toUpperCase();
+            if (!tail) return;
+            myFleet.push({
+                id: Date.now(),
+                tail: tail,
+                type: document.getElementById('typeInput').value,
+                tach: document.getElementById('tachInput').value,
+                status: 'AIRWORTHY',
+                reports: []
+            });
+            sync();
+            showModal('planeModal', false);
+        }
+
+        function openReportModal(planeId, tail) {
+            activePlaneId = planeId;
+            document.getElementById('targetTail').innerText = "Grounding: " + tail;
+            showModal('reportModal', true);
+        }
+
+        function processAndSaveReport() {
+            const btn = document.getElementById('saveReportBtn');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            const file = document.getElementById('photoInput').files[0];
+            const desc = document.getElementById('issueDesc').value;
+
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1000; 
+                        const scale = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scale;
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        finalizeReport(desc, canvas.toDataURL('image/jpeg', 0.8));
+                    }
+                }
+            } else {
+                finalizeReport(desc, null);
+            }
+        }
+
+        function finalizeReport(desc, photoData) {
+            const plane = myFleet.find(p => p.id === activePlaneId);
+            plane.reports.push({ desc: desc || "Issue logged", date: new Date().toLocaleDateString(), photo: photoData });
+            plane.status = 'GROUNDED';
+            sync();
+            document.getElementById('issueDesc').value = '';
+            document.getElementById('saveReportBtn').innerText = "Log & Ground";
+            document.getElementById('saveReportBtn').disabled = false;
+            showModal('reportModal', false);
+        }
+
+        function sync() {
+            localStorage.setItem('aeroFleetV4', JSON.stringify(myFleet));
+            renderFleet();
+        }
+
+        function renderFleet() {
+            const container = document.getElementById('fleetDisplay');
+            container.innerHTML = myFleet.map(plane => `
+                <div class="card">
+                    <span class="status-tag ${plane.status === 'AIRWORTHY' ? 'status-ok' : 'status-warn'}">${plane.status}</span>
+                    <div class="tail-num">${plane.tail}</div>
+                    <div style="font-size:14px; color:grey;">${plane.type} • Tach: ${plane.tach}</div>
+                    <div class="report-box">
+                        ${plane.reports.map(r => `<div class="report-item"><strong>${r.date}:</strong> ${r.desc}${r.photo ? `<img src="${r.photo}" class="report-img">` : ''}</div>`).join('')}
+                        <button class="btn-add" style="font-size:12px; margin-top:10px;" onclick="openReportModal(${plane.id}, '${plane.tail}')">+ Report Damage</button>
+                        <button onclick="clearStatus(${plane.id})" style="border:none; background:none; color:var(--ion-blue); font-size:12px; margin-left:10px;">Return to Service</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearStatus(id) {
+            const plane = myFleet.find(p => p.id === id);
+            plane.status = 'AIRWORTHY';
+            sync();
+        }
+
+        renderFleet();
+    </script>
+</body>
+</html>

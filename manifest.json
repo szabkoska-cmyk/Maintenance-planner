@@ -1,0 +1,16 @@
+{
+  "short_name": "AeroTrack",
+  "name": "AeroTrack Aircraft Maintenance",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3067/3067332.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#f2f2f7",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#007aff"
+}
