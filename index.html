@@ -15,7 +15,9 @@
         .btn-add { background: var(--ion-blue); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         
         /* Aircraft Card */
-        .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card { background: white; border-radius: 16px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card-img { width: 100%; height: 180px; object-fit: cover; background: #ddd; }
+        .card-body { padding: 20px; }
         .tail-num { font-size: 22px; font-weight: 800; color: #1c1c1e; }
         .status-tag { float: right; font-size: 12px; padding: 5px 10px; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
         .status-ok { background: #e2f9e1; color: var(--ion-green); }
@@ -35,8 +37,7 @@
         label { display: block; font-size: 13px; color: #8e8e93; margin-top: 10px; }
         textarea, input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #d1d1d6; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #fafafa; }
         
-        .action-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; margin-top: 12px; transition: opacity 0.2s; }
-        .action-btn:active { opacity: 0.7; }
+        .action-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; margin-top: 12px; }
     </style>
 </head>
 <body>
@@ -54,7 +55,9 @@
             <input type="text" id="tailInput" placeholder="Tail Number (e.g. N12345)">
             <input type="text" id="typeInput" placeholder="Model (e.g. C172)">
             <input type="number" id="tachInput" placeholder="Initial Tach Time">
-            <button class="action-btn" style="background:var(--ion-blue); color:white;" onclick="saveAircraft()">Add to Fleet</button>
+            <label>Aircraft Photo:</label>
+            <input type="file" id="planePhotoInput" accept="image/*" capture="camera">
+            <button id="addPlaneBtn" class="action-btn" style="background:var(--ion-blue); color:white;" onclick="processNewAircraft()">Add to Fleet</button>
             <button class="action-btn" style="background:none; color:grey;" onclick="showModal('planeModal', false)">Cancel</button>
         </div>
     </div>
@@ -65,7 +68,7 @@
             <textarea id="issueDesc" rows="3" placeholder="Describe findings..."></textarea>
             <label>Photo of Damage:</label>
             <input type="file" id="photoInput" accept="image/*" capture="camera">
-            <button id="saveReportBtn" class="action-btn" style="background:var(--ion-red); color:white;" onclick="handleFile(false)">Log & Ground Aircraft</button>
+            <button id="saveReportBtn" class="action-btn" style="background:var(--ion-red); color:white;" onclick="handleFile(false)">Log & Ground</button>
             <button class="action-btn" style="background:none; color:grey;" onclick="showModal('reportModal', false)">Cancel</button>
         </div>
     </div>
@@ -83,93 +86,94 @@
     </div>
 
     <script>
-        // PWA Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 
-        let myFleet = JSON.parse(localStorage.getItem('aeroFleetV5')) || [];
+        let myFleet = JSON.parse(localStorage.getItem('aeroFleetV6')) || [];
         let activePlaneId = null;
 
-        function showModal(id, show) {
-            document.getElementById(id).style.display = show ? 'block' : 'none';
+        function showModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
+
+        // New Logic to handle Aircraft Creation with Image Compression
+        function processNewAircraft() {
+            const btn = document.getElementById('addPlaneBtn');
+            const file = document.getElementById('planePhotoInput').files[0];
+            const tail = document.getElementById('tailInput').value.toUpperCase();
+            
+            if (!tail) return alert("Tail number required.");
+            btn.innerText = "Processing Photo...";
+            btn.disabled = true;
+
+            if (file) {
+                compressImage(file, (compressedPhoto) => {
+                    saveAircraftData(tail, compressedPhoto);
+                });
+            } else {
+                saveAircraftData(tail, null);
+            }
         }
 
-        function saveAircraft() {
-            const tail = document.getElementById('tailInput').value.toUpperCase();
-            if (!tail) return;
+        function saveAircraftData(tail, photo) {
             myFleet.push({
                 id: Date.now(),
                 tail: tail,
                 type: document.getElementById('typeInput').value,
                 tach: document.getElementById('tachInput').value || 0,
                 status: 'AIRWORTHY',
+                planePhoto: photo,
                 reports: []
             });
             sync();
+            document.getElementById('addPlaneBtn').innerText = "Add to Fleet";
+            document.getElementById('addPlaneBtn').disabled = false;
             showModal('planeModal', false);
         }
 
-        function openReportModal(id, tail) {
-            activePlaneId = id;
-            document.getElementById('targetTail').innerText = "Grounding " + tail;
-            showModal('reportModal', true);
-        }
-
-        function openCrsModal(id, tail, currentTach) {
-            activePlaneId = id;
-            document.getElementById('crsHeader').innerText = "Release " + tail;
-            document.getElementById('newTach').value = currentTach;
-            showModal('crsModal', true);
-        }
-
-        // Shared function to handle images and compression
         function handleFile(isCRS) {
             const btn = document.getElementById(isCRS ? 'saveCrsBtn' : 'saveReportBtn');
-            const fileInput = document.getElementById(isCRS ? 'crsFile' : 'photoInput');
-            const file = fileInput.files[0];
-            
-            if (isCRS && !file) return alert("CRS document photo required.");
-            
+            const file = document.getElementById(isCRS ? 'crsFile' : 'photoInput').files[0];
+            if (isCRS && !file) return alert("CRS photo required.");
             btn.innerText = "Processing...";
             btn.disabled = true;
 
             if (file) {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.src = e.target.result;
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1000;
-                        const scale = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scale;
-                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const compressedData = canvas.toDataURL('image/jpeg', 0.7);
-                        isCRS ? finalizeCRS(compressedData) : finalizeReport(compressedData);
-                    }
-                }
+                compressImage(file, (compressedData) => {
+                    isCRS ? finalizeCRS(compressedData) : finalizeReport(compressedData);
+                });
             } else {
                 finalizeReport(null);
             }
         }
 
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scale = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    callback(canvas.toDataURL('image/jpeg', 0.6));
+                };
+            };
+        }
+
         function finalizeReport(photo) {
             const plane = myFleet.find(p => p.id === activePlaneId);
-            const desc = document.getElementById('issueDesc').value;
-            plane.reports.push({ desc: desc || "Issue Reported", date: new Date().toLocaleDateString(), photo: photo, type: 'ISSUE' });
+            plane.reports.push({ desc: document.getElementById('issueDesc').value || "Issue", date: new Date().toLocaleDateString(), photo: photo, type: 'ISSUE' });
             plane.status = 'GROUNDED';
-            resetUI('reportModal', 'saveReportBtn', 'Log & Ground Aircraft');
+            resetUI('reportModal', 'saveReportBtn', 'Log & Ground');
         }
 
         function finalizeCRS(photo) {
             const plane = myFleet.find(p => p.id === activePlaneId);
-            const tach = document.getElementById('newTach').value;
-            plane.tach = tach;
+            plane.tach = document.getElementById('newTach').value;
             plane.status = 'AIRWORTHY';
-            plane.reports.push({ desc: "CRS Issued. Tach: " + tach, date: new Date().toLocaleDateString(), photo: photo, type: 'CRS' });
+            plane.reports.push({ desc: "CRS Issued. Tach: " + plane.tach, date: new Date().toLocaleDateString(), photo: photo, type: 'CRS' });
             resetUI('crsModal', 'saveCrsBtn', 'Sign Off & Release');
         }
 
@@ -181,7 +185,7 @@
         }
 
         function sync() {
-            localStorage.setItem('aeroFleetV5', JSON.stringify(myFleet));
+            localStorage.setItem('aeroFleetV6', JSON.stringify(myFleet));
             renderFleet();
         }
 
@@ -193,24 +197,17 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
-                    <span class="status-tag ${plane.status === 'AIRWORTHY' ? 'status-ok' : 'status-warn'}">${plane.status}</span>
-                    <div class="tail-num">${plane.tail}</div>
-                    <div style="color:grey; font-size:14px;">${plane.type} • Tach: ${plane.tach} hrs</div>
-                    
-                    <div class="report-box">
-                        ${plane.reports.map(r => `
-                            <div class="report-item ${r.type === 'CRS' ? 'crs-log' : ''}">
-                                <strong>${r.date}:</strong> ${r.desc}
-                                ${r.photo ? `<img src="${r.photo}" class="report-img">` : ''}
-                            </div>
-                        `).join('')}
-                        
-                        ${plane.status === 'AIRWORTHY' ? 
-                            `<button class="btn-add" onclick="openReportModal(${plane.id}, '${plane.tail}')">Report Damage</button>` :
-                            `<button class="btn-add" style="background:var(--ion-green)" onclick="openCrsModal(${plane.id}, '${plane.tail}', ${plane.tach})">Return to Service (CRS)</button>`
-                        }
+                    ${plane.planePhoto ? `<img src="${plane.planePhoto}" class="card-img">` : '<div class="card-img" style="display:flex;align-items:center;justify-content:center;color:#999;">No Photo</div>'}
+                    <div class="card-body">
+                        <span class="status-tag ${plane.status === 'AIRWORTHY' ? 'status-ok' : 'status-warn'}">${plane.status}</span>
+                        <div class="tail-num">${plane.tail}</div>
+                        <div style="color:grey; font-size:14px;">${plane.type} • Tach: ${plane.tach} hrs</div>
+                        <div class="report-box">
+                            ${plane.reports.map(r => `<div class="report-item ${r.type === 'CRS' ? 'crs-log' : ''}"><strong>${r.date}:</strong> ${r.desc}${r.photo ? `<img src="${r.photo}" class="report-img">` : ''}</div>`).join('')}
+                            ${plane.status === 'AIRWORTHY' ? `<button class="btn-add" onclick="openReportModal(${plane.id}, '${plane.tail}')">Report Damage</button>` : `<button class="btn-add" style="background:var(--ion-green)" onclick="openCrsModal(${plane.id}, '${plane.tail}', ${plane.tach})">Return to Service (CRS)</button>`}
+                        </div>
+                        <button onclick="deletePlane(${plane.id})" style="border:none; background:none; color:red; font-size:11px; margin-top:15px; padding:0;">Remove Aircraft</button>
                     </div>
-                    <button onclick="deletePlane(${plane.id})" style="border:none; background:none; color:red; font-size:11px; margin-top:15px; padding:0;">Remove Aircraft</button>
                 `;
                 container.appendChild(card);
             });
@@ -222,6 +219,9 @@
                 sync();
             }
         }
+
+        function openReportModal(id, tail) { activePlaneId = id; document.getElementById('targetTail').innerText = "Grounding " + tail; showModal('reportModal', true); }
+        function openCrsModal(id, tail, tach) { activePlaneId = id; document.getElementById('crsHeader').innerText = "Release " + tail; document.getElementById('newTach').value = tach; showModal('crsModal', true); }
 
         renderFleet();
     </script>
