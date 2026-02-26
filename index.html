@@ -9,21 +9,34 @@
     <title>AeroTrack Pro</title>
     <style>
         :root { --ion-blue: #007aff; --ion-red: #ff3b30; --ion-green: #34c759; --bg: #f2f2f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-top: 50px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-top: 60px; padding-bottom: 40px; }
+        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn-add { background: var(--ion-blue); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 600; }
-        .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .tail-num { font-size: 20px; font-weight: 800; }
-        .status-tag { float: right; font-size: 12px; padding: 4px 8px; border-radius: 5px; font-weight: bold; }
+        .btn-add { background: var(--ion-blue); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* Aircraft Card */
+        .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .tail-num { font-size: 22px; font-weight: 800; color: #1c1c1e; }
+        .status-tag { float: right; font-size: 12px; padding: 5px 10px; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
         .status-ok { background: #e2f9e1; color: var(--ion-green); }
         .status-warn { background: #ffe5e5; color: var(--ion-red); }
+
+        /* Report & History Section */
         .report-box { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
-        .report-item { background: #f9f9fb; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; border-left: 3px solid var(--ion-red); }
-        .report-img { width: 100%; border-radius: 8px; margin-top: 5px; }
+        .report-item { background: #f9f9fb; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 14px; border-left: 4px solid var(--ion-red); }
+        .report-item.crs-log { border-left-color: var(--ion-green); }
+        .report-img { width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
+
+        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; backdrop-filter: blur(5px); }
-        .modal-content { background: white; width: 90%; margin: 15% auto; padding: 20px; border-radius: 20px; box-sizing: border-box; }
-        textarea, input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        .action-btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; margin-top: 10px; }
+        .modal-content { background: white; width: 90%; margin: 10% auto; padding: 25px; border-radius: 20px; box-sizing: border-box; max-height: 85vh; overflow-y: auto; }
+        
+        h2 { margin-top: 0; color: #1c1c1e; }
+        label { display: block; font-size: 13px; color: #8e8e93; margin-top: 10px; }
+        textarea, input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #d1d1d6; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #fafafa; }
+        
+        .action-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; margin-top: 12px; transition: opacity 0.2s; }
+        .action-btn:active { opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -37,10 +50,10 @@
 
     <div id="planeModal" class="modal">
         <div class="modal-content">
-            <h2>Add Aircraft</h2>
-            <input type="text" id="tailInput" placeholder="Tail Number">
-            <input type="text" id="typeInput" placeholder="Model">
-            <input type="number" id="tachInput" placeholder="Current Tach">
+            <h2>New Aircraft</h2>
+            <input type="text" id="tailInput" placeholder="Tail Number (e.g. N12345)">
+            <input type="text" id="typeInput" placeholder="Model (e.g. C172)">
+            <input type="number" id="tachInput" placeholder="Initial Tach Time">
             <button class="action-btn" style="background:var(--ion-blue); color:white;" onclick="saveAircraft()">Add to Fleet</button>
             <button class="action-btn" style="background:none; color:grey;" onclick="showModal('planeModal', false)">Cancel</button>
         </div>
@@ -48,21 +61,34 @@
 
     <div id="reportModal" class="modal">
         <div class="modal-content">
-            <h2 id="targetTail">New Report</h2>
-            <textarea id="issueDesc" rows="3" placeholder="Describe the damage..."></textarea>
+            <h2 id="targetTail">Report Issue</h2>
+            <textarea id="issueDesc" rows="3" placeholder="Describe findings..."></textarea>
+            <label>Photo of Damage:</label>
             <input type="file" id="photoInput" accept="image/*" capture="camera">
-            <button id="saveReportBtn" class="action-btn" style="background:var(--ion-red); color:white;" onclick="processAndSaveReport()">Log & Ground</button>
+            <button id="saveReportBtn" class="action-btn" style="background:var(--ion-red); color:white;" onclick="handleFile(false)">Log & Ground Aircraft</button>
             <button class="action-btn" style="background:none; color:grey;" onclick="showModal('reportModal', false)">Cancel</button>
         </div>
     </div>
 
+    <div id="crsModal" class="modal">
+        <div class="modal-content">
+            <h2 id="crsHeader">Release to Service</h2>
+            <label>Updated Tach Time:</label>
+            <input type="number" id="newTach" placeholder="Current Hours">
+            <label>Upload Signed CRS Photo:</label>
+            <input type="file" id="crsFile" accept="image/*" capture="camera">
+            <button id="saveCrsBtn" class="action-btn" style="background:var(--ion-green); color:white;" onclick="handleFile(true)">Sign Off & Release</button>
+            <button class="action-btn" style="background:none; color:grey;" onclick="showModal('crsModal', false)">Cancel</button>
+        </div>
+    </div>
+
     <script>
-        // Register Service Worker for PWA
+        // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
 
-        let myFleet = JSON.parse(localStorage.getItem('aeroFleetV4')) || [];
+        let myFleet = JSON.parse(localStorage.getItem('aeroFleetV5')) || [];
         let activePlaneId = null;
 
         function showModal(id, show) {
@@ -76,7 +102,7 @@
                 id: Date.now(),
                 tail: tail,
                 type: document.getElementById('typeInput').value,
-                tach: document.getElementById('tachInput').value,
+                tach: document.getElementById('tachInput').value || 0,
                 status: 'AIRWORTHY',
                 reports: []
             });
@@ -84,19 +110,29 @@
             showModal('planeModal', false);
         }
 
-        function openReportModal(planeId, tail) {
-            activePlaneId = planeId;
-            document.getElementById('targetTail').innerText = "Grounding: " + tail;
+        function openReportModal(id, tail) {
+            activePlaneId = id;
+            document.getElementById('targetTail').innerText = "Grounding " + tail;
             showModal('reportModal', true);
         }
 
-        function processAndSaveReport() {
-            const btn = document.getElementById('saveReportBtn');
+        function openCrsModal(id, tail, currentTach) {
+            activePlaneId = id;
+            document.getElementById('crsHeader').innerText = "Release " + tail;
+            document.getElementById('newTach').value = currentTach;
+            showModal('crsModal', true);
+        }
+
+        // Shared function to handle images and compression
+        function handleFile(isCRS) {
+            const btn = document.getElementById(isCRS ? 'saveCrsBtn' : 'saveReportBtn');
+            const fileInput = document.getElementById(isCRS ? 'crsFile' : 'photoInput');
+            const file = fileInput.files[0];
+            
+            if (isCRS && !file) return alert("CRS document photo required.");
+            
             btn.innerText = "Processing...";
             btn.disabled = true;
-
-            const file = document.getElementById('photoInput').files[0];
-            const desc = document.getElementById('issueDesc').value;
 
             if (file) {
                 const reader = new FileReader();
@@ -106,55 +142,85 @@
                     img.src = e.target.result;
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1000; 
+                        const MAX_WIDTH = 1000;
                         const scale = MAX_WIDTH / img.width;
                         canvas.width = MAX_WIDTH;
                         canvas.height = img.height * scale;
                         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                        finalizeReport(desc, canvas.toDataURL('image/jpeg', 0.8));
+                        const compressedData = canvas.toDataURL('image/jpeg', 0.7);
+                        isCRS ? finalizeCRS(compressedData) : finalizeReport(compressedData);
                     }
                 }
             } else {
-                finalizeReport(desc, null);
+                finalizeReport(null);
             }
         }
 
-        function finalizeReport(desc, photoData) {
+        function finalizeReport(photo) {
             const plane = myFleet.find(p => p.id === activePlaneId);
-            plane.reports.push({ desc: desc || "Issue logged", date: new Date().toLocaleDateString(), photo: photoData });
+            const desc = document.getElementById('issueDesc').value;
+            plane.reports.push({ desc: desc || "Issue Reported", date: new Date().toLocaleDateString(), photo: photo, type: 'ISSUE' });
             plane.status = 'GROUNDED';
+            resetUI('reportModal', 'saveReportBtn', 'Log & Ground Aircraft');
+        }
+
+        function finalizeCRS(photo) {
+            const plane = myFleet.find(p => p.id === activePlaneId);
+            const tach = document.getElementById('newTach').value;
+            plane.tach = tach;
+            plane.status = 'AIRWORTHY';
+            plane.reports.push({ desc: "CRS Issued. Tach: " + tach, date: new Date().toLocaleDateString(), photo: photo, type: 'CRS' });
+            resetUI('crsModal', 'saveCrsBtn', 'Sign Off & Release');
+        }
+
+        function resetUI(modalId, btnId, btnText) {
             sync();
-            document.getElementById('issueDesc').value = '';
-            document.getElementById('saveReportBtn').innerText = "Log & Ground";
-            document.getElementById('saveReportBtn').disabled = false;
-            showModal('reportModal', false);
+            document.getElementById(btnId).innerText = btnText;
+            document.getElementById(btnId).disabled = false;
+            showModal(modalId, false);
         }
 
         function sync() {
-            localStorage.setItem('aeroFleetV4', JSON.stringify(myFleet));
+            localStorage.setItem('aeroFleetV5', JSON.stringify(myFleet));
             renderFleet();
         }
 
         function renderFleet() {
             const container = document.getElementById('fleetDisplay');
-            container.innerHTML = myFleet.map(plane => `
-                <div class="card">
+            container.innerHTML = myFleet.length === 0 ? '<p style="text-align:center; color:grey;">Hangar is empty.</p>' : '';
+            
+            myFleet.forEach(plane => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
                     <span class="status-tag ${plane.status === 'AIRWORTHY' ? 'status-ok' : 'status-warn'}">${plane.status}</span>
                     <div class="tail-num">${plane.tail}</div>
-                    <div style="font-size:14px; color:grey;">${plane.type} • Tach: ${plane.tach}</div>
+                    <div style="color:grey; font-size:14px;">${plane.type} • Tach: ${plane.tach} hrs</div>
+                    
                     <div class="report-box">
-                        ${plane.reports.map(r => `<div class="report-item"><strong>${r.date}:</strong> ${r.desc}${r.photo ? `<img src="${r.photo}" class="report-img">` : ''}</div>`).join('')}
-                        <button class="btn-add" style="font-size:12px; margin-top:10px;" onclick="openReportModal(${plane.id}, '${plane.tail}')">+ Report Damage</button>
-                        <button onclick="clearStatus(${plane.id})" style="border:none; background:none; color:var(--ion-blue); font-size:12px; margin-left:10px;">Return to Service</button>
+                        ${plane.reports.map(r => `
+                            <div class="report-item ${r.type === 'CRS' ? 'crs-log' : ''}">
+                                <strong>${r.date}:</strong> ${r.desc}
+                                ${r.photo ? `<img src="${r.photo}" class="report-img">` : ''}
+                            </div>
+                        `).join('')}
+                        
+                        ${plane.status === 'AIRWORTHY' ? 
+                            `<button class="btn-add" onclick="openReportModal(${plane.id}, '${plane.tail}')">Report Damage</button>` :
+                            `<button class="btn-add" style="background:var(--ion-green)" onclick="openCrsModal(${plane.id}, '${plane.tail}', ${plane.tach})">Return to Service (CRS)</button>`
+                        }
                     </div>
-                </div>
-            `).join('');
+                    <button onclick="deletePlane(${plane.id})" style="border:none; background:none; color:red; font-size:11px; margin-top:15px; padding:0;">Remove Aircraft</button>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        function clearStatus(id) {
-            const plane = myFleet.find(p => p.id === id);
-            plane.status = 'AIRWORTHY';
-            sync();
+        function deletePlane(id) {
+            if(confirm("Remove this aircraft and all logs?")) {
+                myFleet = myFleet.filter(p => p.id !== id);
+                sync();
+            }
         }
 
         renderFleet();
