@@ -11,9 +11,16 @@
         :root { --ion-blue: #007aff; --ion-red: #ff3b30; --ion-green: #34c759; --bg: #f2f2f7; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; padding-top: 60px; padding-bottom: 40px; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn-add { background: var(--ion-blue); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        /* Header & Location UI */
+        .header { margin-bottom: 20px; }
+        .location-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .airport-badge { background: #3a3a3c; color: white; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 14px; letter-spacing: 1px; }
+        .hangar-title { font-size: 28px; font-weight: 800; margin: 0; color: #1c1c1e; }
+        .nav-buttons { display: flex; gap: 10px; margin-top: 15px; }
         
+        .btn-add { flex: 1; background: var(--ion-blue); color: white; border: none; padding: 12px; border-radius: 20px; font-weight: 600; font-size: 14px; }
+        .btn-loc { background: #e5e5ea; color: #1c1c1e; border: none; padding: 10px 15px; border-radius: 20px; font-weight: 600; font-size: 13px; }
+
         /* Aircraft Card */
         .card { background: white; border-radius: 16px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .card-img { width: 100%; height: 200px; object-fit: cover; background: #ddd; display: block; }
@@ -25,7 +32,7 @@
 
         .meta-info { color: #8e8e93; font-size: 14px; margin: 5px 0 15px 0; line-height: 1.4; }
         
-        /* Report & History Section */
+        /* Reports */
         .report-box { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
         .report-item { background: #f9f9fb; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 14px; border-left: 4px solid var(--ion-red); }
         .report-item.crs-log { border-left-color: var(--ion-green); }
@@ -34,38 +41,48 @@
         /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; backdrop-filter: blur(5px); }
         .modal-content { background: white; width: 90%; margin: 10% auto; padding: 25px; border-radius: 20px; box-sizing: border-box; max-height: 85vh; overflow-y: auto; }
-        
-        h2 { margin-top: 0; color: #1c1c1e; }
         label { display: block; font-size: 13px; color: #8e8e93; margin-top: 12px; font-weight: 600; }
-        textarea, input { width: 100%; padding: 14px; margin: 6px 0; border: 1px solid #d1d1d6; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #fafafa; -webkit-appearance: none; }
-        
+        textarea, input { width: 100%; padding: 14px; margin: 6px 0; border: 1px solid #d1d1d6; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #fafafa; }
         .action-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; margin-top: 12px; color: white; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>Hangar</h1>
-        <button class="btn-add" onclick="showModal('planeModal', true)">+ Aircraft</button>
+        <div class="location-row">
+            <span id="displayAirport" class="airport-badge">ICAO</span>
+            <button class="btn-loc" onclick="showModal('locModal', true)">Change Location</button>
+        </div>
+        <h1 id="displayHangar" class="hangar-title">Hangar Name</h1>
+        
+        <div class="nav-buttons">
+            <button class="btn-add" onclick="showModal('planeModal', true)">+ Add New Aircraft</button>
+        </div>
     </div>
 
     <div id="fleetDisplay"></div>
 
+    <div id="locModal" class="modal">
+        <div class="modal-content">
+            <h2>Location Settings</h2>
+            <label>Airport ICAO Code</label>
+            <input type="text" id="icaoInput" placeholder="e.g. LHBP">
+            <label>Hangar Name</label>
+            <input type="text" id="hangarInput" placeholder="e.g. Hangar 19">
+            <button class="action-btn" style="background:var(--ion-blue);" onclick="updateLocation()">Save Settings</button>
+            <button class="action-btn" style="background:none; color:grey;" onclick="showModal('locModal', false)">Cancel</button>
+        </div>
+    </div>
+
     <div id="planeModal" class="modal">
         <div class="modal-content">
             <h2>New Aircraft</h2>
-            <input type="text" id="tailInput" placeholder="Tail Number (e.g. N12345)">
-            <input type="text" id="typeInput" placeholder="Model (e.g. Cessna 182)">
-            
+            <input type="text" id="tailInput" placeholder="Tail Number">
+            <input type="text" id="typeInput" placeholder="Model">
             <label>Current Tach Time</label>
             <input type="number" id="tachInput" placeholder="0.0">
-            
-            <label>Last Inspection Date</label>
-            <input type="date" id="inspectInput">
-
-            <label>Aircraft Photo (Gallery or Camera)</label>
+            <label>Aircraft Photo</label>
             <input type="file" id="planePhotoInput" accept="image/*">
-            
             <button id="addPlaneBtn" class="action-btn" style="background:var(--ion-blue);" onclick="processNewAircraft()">Add to Fleet</button>
             <button class="action-btn" style="background:none; color:grey;" onclick="showModal('planeModal', false)">Cancel</button>
         </div>
@@ -98,36 +115,38 @@
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 
         let myFleet = JSON.parse(localStorage.getItem('aeroFleetV6')) || [];
+        let config = JSON.parse(localStorage.getItem('aeroConfig')) || { airport: 'LHBP', hangar: 'Hangar 1' };
         let activePlaneId = null;
 
         function showModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
+
+        // Update Header Info
+        function updateLocation() {
+            config.airport = document.getElementById('icaoInput').value.toUpperCase() || config.airport;
+            config.hangar = document.getElementById('hangarInput').value || config.hangar;
+            localStorage.setItem('aeroConfig', JSON.stringify(config));
+            renderUI();
+            showModal('locModal', false);
+        }
 
         function processNewAircraft() {
             const btn = document.getElementById('addPlaneBtn');
             const file = document.getElementById('planePhotoInput').files[0];
             const tail = document.getElementById('tailInput').value.toUpperCase();
-            const lastInspect = document.getElementById('inspectInput').value;
-            
             if (!tail) return alert("Tail number required.");
-            btn.innerText = "Saving...";
-            btn.disabled = true;
+            btn.innerText = "Saving..."; btn.disabled = true;
 
             if (file) {
-                compressImage(file, (compressedPhoto) => {
-                    saveAircraftData(tail, compressedPhoto, lastInspect);
-                });
-            } else {
-                saveAircraftData(tail, null, lastInspect);
-            }
+                compressImage(file, (compressedPhoto) => { saveAircraftData(tail, compressedPhoto); });
+            } else { saveAircraftData(tail, null); }
         }
 
-        function saveAircraftData(tail, photo, lastInspect) {
+        function saveAircraftData(tail, photo) {
             myFleet.push({
                 id: Date.now(),
                 tail: tail,
                 type: document.getElementById('typeInput').value,
                 tach: document.getElementById('tachInput').value || 0,
-                lastInspect: lastInspect || 'Not Recorded',
                 status: 'AIRWORTHY',
                 planePhoto: photo,
                 reports: []
@@ -140,16 +159,13 @@
             const btn = document.getElementById(isCRS ? 'saveCrsBtn' : 'saveReportBtn');
             const file = document.getElementById(isCRS ? 'crsFile' : 'photoInput').files[0];
             if (isCRS && !file) return alert("CRS photo required.");
-            btn.innerText = "Processing...";
-            btn.disabled = true;
+            btn.innerText = "Processing..."; btn.disabled = true;
 
             if (file) {
                 compressImage(file, (compressedData) => {
                     isCRS ? finalizeCRS(compressedData) : finalizeReport(compressedData);
                 });
-            } else {
-                finalizeReport(null);
-            }
+            } else { finalizeReport(null); }
         }
 
         function compressImage(file, callback) {
@@ -162,8 +178,7 @@
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 800;
                     const scale = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scale;
+                    canvas.width = MAX_WIDTH; canvas.height = img.height * scale;
                     canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                     callback(canvas.toDataURL('image/jpeg', 0.6));
                 };
@@ -172,7 +187,7 @@
 
         function finalizeReport(photo) {
             const plane = myFleet.find(p => p.id === activePlaneId);
-            plane.reports.push({ desc: document.getElementById('issueDesc').value || "Defect Logged", date: new Date().toLocaleDateString(), photo: photo, type: 'ISSUE' });
+            plane.reports.push({ desc: document.getElementById('issueDesc').value || "Defect", date: new Date().toLocaleDateString(), photo: photo, type: 'ISSUE' });
             plane.status = 'GROUNDED';
             btnReset('saveReportBtn', 'Log & Ground', 'reportModal');
         }
@@ -181,8 +196,8 @@
             const plane = myFleet.find(p => p.id === activePlaneId);
             plane.tach = document.getElementById('newTach').value;
             plane.status = 'AIRWORTHY';
-            plane.reports.push({ desc: "CRS Uploaded. Tach: " + plane.tach, date: new Date().toLocaleDateString(), photo: photo, type: 'CRS' });
-            btnReset('saveCrsBtn', 'Sign Off & Release', 'crsModal');
+            plane.reports.push({ desc: "CRS Issued. Tach: " + plane.tach, date: new Date().toLocaleDateString(), photo: photo, type: 'CRS' });
+            btnReset('crsModal', 'saveCrsBtn', 'Sign Off & Release');
         }
 
         function btnReset(btnId, txt, modalId) {
@@ -190,16 +205,18 @@
             const b = document.getElementById(btnId);
             b.innerText = txt; b.disabled = false;
             showModal(modalId, false);
-            // Clear inputs
-            document.querySelectorAll('input[type="text"], input[type="number"], input[type="file"], textarea').forEach(i => i.value = '');
+            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
         }
 
         function sync() {
             localStorage.setItem('aeroFleetV6', JSON.stringify(myFleet));
-            renderFleet();
+            renderUI();
         }
 
-        function renderFleet() {
+        function renderUI() {
+            document.getElementById('displayAirport').innerText = config.airport;
+            document.getElementById('displayHangar').innerText = config.hangar;
+            
             const container = document.getElementById('fleetDisplay');
             container.innerHTML = myFleet.length === 0 ? '<p style="text-align:center; color:grey; margin-top:40px;">Hangar is empty.</p>' : '';
             
@@ -211,11 +228,7 @@
                     <div class="card-body">
                         <span class="status-tag ${plane.status === 'AIRWORTHY' ? 'status-ok' : 'status-warn'}">${plane.status}</span>
                         <div class="tail-num">${plane.tail}</div>
-                        <div class="meta-info">
-                            <strong>${plane.type}</strong><br>
-                            Current Tach: ${plane.tach} hrs<br>
-                            Last Inspection: ${plane.lastInspect}
-                        </div>
+                        <div class="meta-info"><strong>${plane.type}</strong><br>Tach: ${plane.tach} hrs</div>
                         <div class="report-box">
                             ${plane.reports.map(r => `<div class="report-item ${r.type === 'CRS' ? 'crs-log' : ''}"><strong>${r.date}:</strong> ${r.desc}${r.photo ? `<img src="${r.photo}" class="report-img">` : ''}</div>`).join('')}
                             ${plane.status === 'AIRWORTHY' ? 
@@ -223,7 +236,7 @@
                                 `<button class="btn-add" style="width:100%; background:var(--ion-green)" onclick="openCrsModal(${plane.id}, '${plane.tail}', ${plane.tach})">Release (CRS)</button>`
                             }
                         </div>
-                        <button onclick="deletePlane(${plane.id})" style="border:none; background:none; color:red; font-size:12px; margin-top:20px; padding:0; width:100%; text-align:center;">Remove Aircraft</button>
+                        <button onclick="deletePlane(${plane.id})" style="border:none; background:none; color:red; font-size:12px; margin-top:20px; width:100%;">Remove Aircraft</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -231,16 +244,13 @@
         }
 
         function deletePlane(id) {
-            if(confirm("Permanently remove this aircraft?")) {
-                myFleet = myFleet.filter(p => p.id !== id);
-                sync();
-            }
+            if(confirm("Permanently remove aircraft?")) { myFleet = myFleet.filter(p => p.id !== id); sync(); }
         }
 
         function openReportModal(id, tail) { activePlaneId = id; document.getElementById('targetTail').innerText = "Grounding " + tail; showModal('reportModal', true); }
         function openCrsModal(id, tail, tach) { activePlaneId = id; document.getElementById('crsHeader').innerText = "Release " + tail; document.getElementById('newTach').value = tach; showModal('crsModal', true); }
 
-        renderFleet();
+        renderUI();
     </script>
 </body>
 </html>
